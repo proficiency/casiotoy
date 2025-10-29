@@ -7,6 +7,13 @@ use crossterm::{
 use ratatui::prelude::*;
 use std::io::stdout;
 
+mod watch;
+mod display;
+mod settings;
+mod time;
+
+use watch::Watch;
+
 fn main() -> Result<()> {
     stdout().execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
@@ -14,9 +21,42 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(backend)?;
     
+    let mut watch = Watch::new()?;
+    run_app(&mut terminal, &mut watch)?;
+    
     // clean up
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
     
     Ok(())
+}
+
+fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, watch: &mut Watch) -> Result<()> {
+    loop {
+        terminal.draw(|f| display::ui(f, watch))?;
+        
+        if event::poll(std::time::Duration::from_millis(100))? {
+            if let Event::Key(key) = event::read()? {
+                if handle_key_event(key, watch)? {
+                    return Ok(());
+                }
+            }
+        }
+
+        // tick
+        watch.update()?;
+    }
+}
+
+fn handle_key_event(key: KeyEvent, watch: &mut Watch) -> Result<bool> {
+    match key.code {
+        KeyCode::Char('q') | KeyCode::Esc => return Ok(true),
+        KeyCode::Char('m') => watch.toggle_mode()?,
+        KeyCode::Char('s') => watch.toggle_start_stop()?,
+        KeyCode::Char('r') => watch.reset()?,
+        KeyCode::Char('l') => watch.toggle_light()?,
+        KeyCode::Char('a') => watch.set_alarm()?,
+        _ => {}
+    }
+    Ok(false)
 }
