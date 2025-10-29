@@ -1,40 +1,51 @@
 use anyhow::Result;
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEvent},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
+    event::{self, Event, KeyCode, KeyEvent},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::prelude::*;
+use std::env;
 use std::io::stdout;
 
-mod watch;
 mod display;
 mod settings;
 mod time;
+mod watch;
 
-use watch::Watch;
+use watch::{Watch, WatchModel};
 
 fn main() -> Result<()> {
+    let args: Vec<String> = env::args().collect();
+    let model = if args.len() > 1 && args[1] == "f91w" {
+        WatchModel::AE1200
+    } else {
+        WatchModel::F91W
+    };
+
     stdout().execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
-    
+
     let backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(backend)?;
-    
-    let mut watch = Watch::new()?;
+
+    let mut watch = Watch::new(model)?;
     run_app(&mut terminal, &mut watch)?;
-    
+
     // clean up
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
-    
+
     Ok(())
 }
 
-fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, watch: &mut Watch) -> Result<()> {
+fn run_app(
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
+    watch: &mut Watch,
+) -> Result<()> {
     loop {
         terminal.draw(|f| display::ui(f, watch))?;
-        
+
         if event::poll(std::time::Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 if handle_key_event(key, watch)? {
