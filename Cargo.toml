@@ -1,0 +1,11 @@
+[package]
+name = "casiotoy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+serde = "1.0.188"
+serde_json = "1.0.107"
+ratatui = "0.30.0-alpha.5"
+chrono = "0.4.38"
