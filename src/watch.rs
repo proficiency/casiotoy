@@ -46,12 +46,12 @@ impl Watch {
     pub fn new(model: WatchModel) -> Result<Self> {
         let settings = WatchSettings::load()?;
         let time_manager = TimeManager::new();
-        
+
         let (mode, f91w_mode) = match model {
             WatchModel::AE1200 => (WatchMode::Home, F91WMode::Time),
             WatchModel::F91W => (WatchMode::Home, F91WMode::Time),
         };
-        
+
         Ok(Self {
             model,
             mode,
@@ -103,7 +103,7 @@ impl Watch {
         if self.settings.alarm_enabled && self.time_manager.check_alarm(&self.settings.alarm_time) {
             todo!()
         }
-        
+
         Ok(())
     }
 
@@ -149,7 +149,7 @@ impl Watch {
                     }
                     WatchMode::Timer => {
                         if self.timer_running {
-                    // Start the stopwatch
+                            // Start the stopwatch
                             self.timer_running = false;
                             if let Some(start_time) = self.timer_start_time {
                                 let elapsed = start_time.elapsed().as_millis() as u64;
@@ -164,11 +164,10 @@ impl Watch {
                     _ => {}
                 }
             }
-            WatchModel::F91W => {
-                match self.f91w_mode {
-                    F91WMode::Stopwatch => {
-                        if self.stopwatch_running {
-                    if let Some(start_time) = self.timer_start_time {
+            WatchModel::F91W => match self.f91w_mode {
+                F91WMode::Stopwatch => {
+                    if self.stopwatch_running {
+                        if let Some(start_time) = self.timer_start_time {
                             self.stopwatch_running = false;
                             if let Some(start_time) = self.stopwatch_start_time {
                                 let elapsed = start_time.elapsed().as_millis() as u64;
@@ -180,45 +179,38 @@ impl Watch {
                             self.stopwatch_start_time = Some(Instant::now());
                         }
                     }
-                    _ => {}
-                } else {
-                    // Start the timer
-                    self.timer_running = true;
-                    self.timer_start_time = Some(Instant::now());
                 }
-            }
+                _ => {}
+            },
             _ => {}
         }
+
         Ok(())
     }
 
     pub fn reset(&mut self) -> Result<()> {
         match self.model {
-            WatchModel::AE1200 => {
-                match self.mode {
-                    WatchMode::Stopwatch => {
-                        self.stopwatch_time = 0;
-                        self.stopwatch_running = false;
-                        self.stopwatch_start_time = None;
-                    }
-                    WatchMode::Timer => {
-                        self.timer_time = 0;
-                        self.timer_running = false;
-                        self.timer_start_time = None;
-                    }
-                    _ => {}
+            WatchModel::AE1200 => match self.mode {
+                WatchMode::Stopwatch => {
+                    self.stopwatch_time = 0;
+                    self.stopwatch_running = false;
+                    self.stopwatch_start_time = None;
                 }
-            }
-            WatchModel::F91W => {
-                match self.f91w_mode {
-                    F91WMode::Stopwatch => {
-                        self.stopwatch_time = 0;
-                        self.stopwatch_running = false;
-                        self.stopwatch_start_time = None;
-                    }
-                    _ => {}
+                WatchMode::Timer => {
+                    self.timer_time = 0;
+                    self.timer_running = false;
+                    self.timer_start_time = None;
                 }
-            }
+                _ => {}
+            },
+            WatchModel::F91W => match self.f91w_mode {
+                F91WMode::Stopwatch => {
+                    self.stopwatch_time = 0;
+                    self.stopwatch_running = false;
+                    self.stopwatch_start_time = None;
+                }
+                _ => {}
+            },
         }
         Ok(())
     }

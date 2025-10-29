@@ -6,7 +6,7 @@ use std::path::Path;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WatchSettings {
     pub time_format_24h: bool,
-    pub date_format_us: bool, // true for MM/DD, false for DD/MM
+    pub date_format_us: bool,     // true for MM/DD, false for DD/MM
     pub auto_light_duration: u64, // seconds
     pub alarm_enabled: bool,
     pub alarm_time: Option<String>, // HH:MM format
