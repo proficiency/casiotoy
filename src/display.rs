@@ -4,22 +4,32 @@ use ratatui::{
 };
 use chrono::Timelike;
 
-use crate::watch::{Watch, WatchMode};
+use crate::watch::{Watch, WatchMode, WatchModel, F91WMode};
 
 pub fn ui(f: &mut Frame, watch: &Watch) {
     let size = f.area();
-    let watch_size = 20;
+    
+    // different sizes for different watches
+    let (watch_width, watch_height) = match watch.model {
+        WatchModel::AE1200 => (50, 15),
+        WatchModel::F91W => (30, 10),
+    };
 
     let watch_area = Rect {
-        x: (size.width.saturating_sub(watch_size)) / 2,
-        y: (size.height.saturating_sub(watch_size)) / 2,
-        width: watch_size.min(size.width),
-        height: watch_size.min(size.height),
+        x: (size.width.saturating_sub(watch_width)) / 2,
+        y: (size.height.saturating_sub(watch_height)) / 2,
+        width: watch_width.min(size.width),
+        height: watch_height.min(size.height),
     };
     
-    // draw the frame
+    // draw the frame with model-specific title
+    let title = match watch.model {
+        WatchModel::AE1200 => "Casio AE-1200",
+        WatchModel::F91W => "Casio F-91W",
+    };
+    
     let watch_block = Block::default()
-        .title("Casio AE-1200")
+        .title(title)
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Blue));
     
@@ -27,21 +37,38 @@ pub fn ui(f: &mut Frame, watch: &Watch) {
     let watch_inner = watch_block.inner(watch_area);
     f.render_widget(watch_block, watch_area);
     
-    match watch.mode {
-        WatchMode::Home => {
-            render_time_display(f, watch_inner, watch);
+    match watch.model {
+        WatchModel::AE1200 => {
+            match watch.mode {
+                WatchMode::Home => {
+                    render_time_display(f, watch_inner, watch);
+                }
+                WatchMode::WorldTime => {
+                    render_world_time_display(f, watch_inner, watch);
+                }
+                WatchMode::Alarm => {
+                    render_alarm_display(f, watch_inner, watch);
+                }
+                WatchMode::Timer => {
+                    render_timer_display(f, watch_inner, watch);
+                }
+                WatchMode::Stopwatch => {
+                    render_stopwatch_display(f, watch_inner, watch);
+                }
+            }
         }
-        WatchMode::WorldTime => {
-            render_world_time_display(f, watch_inner, watch);
-        }
-        WatchMode::Alarm => {
-            render_alarm_display(f, watch_inner, watch);
-        }
-        WatchMode::Timer => {
-            render_timer_display(f, watch_inner, watch);
-        }
-        WatchMode::Stopwatch => {
-            render_stopwatch_display(f, watch_inner, watch);
+        WatchModel::F91W => {
+            match watch.f91w_mode {
+                F91WMode::Time => {
+                    render_f91w_time_display(f, watch_inner, watch);
+                }
+                F91WMode::Alarm => {
+                    render_f91w_alarm_display(f, watch_inner, watch);
+                }
+                F91WMode::Stopwatch => {
+                    render_f91w_stopwatch_display(f, watch_inner, watch);
+                }
+            }
         }
     }
     
@@ -353,4 +380,100 @@ fn format_timer_time(milliseconds: u64) -> String {
     let millis = (milliseconds % 1000) / 10;
     
     format!("{:02}:{:02}.{:02}", minutes, seconds, millis)
+}
+
+fn render_f91w_time_display(f: &mut Frame, area: Rect, watch: &Watch) {
+    let time_text = watch.time_manager.format_time(watch.settings.time_format_24h);
+    let date_text = watch.time_manager.format_date(watch.settings.date_format_us);
+    
+    let time_display = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                time_text,
+                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            )
+        ]).alignment(Alignment::Center),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                date_text,
+                Style::default().fg(Color::Cyan),
+            )
+        ]).alignment(Alignment::Center),
+        Line::from(""),
+        Line::from("press 'M' for mode"),
+    ])
+    .block(Block::default());
+    
+    f.render_widget(time_display, area);
+}
+
+fn render_f91w_alarm_display(f: &mut Frame, area: Rect, watch: &Watch) {
+    let alarm_status = if watch.settings.alarm_enabled { 
+        watch.settings.alarm_time.clone().unwrap_or_else(|| "--:--".to_string())
+    } else {
+        "OFF".to_string()
+    };
+    
+    let alarm_display = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                "ALARM",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            )
+        ]).alignment(Alignment::Center),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                alarm_status,
+                Style::default().fg(Color::Cyan),
+            )
+        ]).alignment(Alignment::Center),
+        Line::from(""),
+        Line::from("press 'A' toggle, 'M' mode"),
+    ])
+    .block(Block::default());
+    
+    f.render_widget(alarm_display, area);
+}
+
+fn render_f91w_stopwatch_display(f: &mut Frame, area: Rect, watch: &Watch) {
+    let time_text = format_stopwatch_time(watch.stopwatch_time);
+    let status = if watch.stopwatch_running { "RUN" } else { "STOP" };
+    
+    let stopwatch_display = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                "STOPWATCH",
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            )
+        ]).alignment(Alignment::Center),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                time_text,
+                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            )
+        ]).alignment(Alignment::Center),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                status,
+                if watch.stopwatch_running {
+                    Style::default().fg(Color::Red)
+                } else {
+                    Style::default().fg(Color::Blue)
+                },
+            )
+        ]).alignment(Alignment::Center),
+        Line::from(""),
+        Line::from("press 'S' start/stop, 'R' reset"),
+        Line::from("press 'M' for mode"),
+    ])
+    .block(Block::default());
+    
+    f.render_widget(stopwatch_display, area);
 }

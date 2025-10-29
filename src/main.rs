@@ -6,22 +6,30 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 use std::io::stdout;
+use std::env;
 
 mod watch;
 mod display;
 mod settings;
 mod time;
 
-use watch::Watch;
+use watch::{Watch, WatchModel};
 
 fn main() -> Result<()> {
+    let args: Vec<String> = env::args().collect();
+    let model = if args.len() > 1 && args[1] == "f91w" {
+        WatchModel::AE1200
+    } else {
+        WatchModel::F91W
+    };
+    
     stdout().execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
     
     let backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(backend)?;
     
-    let mut watch = Watch::new()?;
+    let mut watch = Watch::new(model)?;
     run_app(&mut terminal, &mut watch)?;
     
     // clean up
