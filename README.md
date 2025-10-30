@@ -2,4 +2,6 @@
 Watch emulator written in Rust which _plans_ to implement several Casio digital watches.
 
 ### Features:
-* Currently implements the AE-1200, however more watches are planned.
+* Emulates several Casio digital watches:
+  * AE-1200
+  * F-91W
